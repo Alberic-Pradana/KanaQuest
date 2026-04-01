@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="KanaQuest — Game edukasi interaktif untuk belajar huruf Jepang Hiragana dan Katakana dengan 3 level tantangan." />
+  <title>KanaQuest — Belajar Hiragana & Katakana</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎌</text></svg>" />
+</head>
+<body>
+
+  <!-- ======== HEADER ======== -->
+  <header class="app-header">
+    <div class="header-inner">
+      <a class="logo" id="logo-home">
+        <div class="logo-icon">鍛</div>
+        <span>KanaQuest</span>
+      </a>
+      <div class="header-actions">
+        <button class="icon-btn" id="btn-sound" title="Sound On/Off">🔊</button>
+        <button class="icon-btn" id="btn-dark-mode" title="Dark Mode">🌙</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======== MAIN CONTAINER ======== -->
+  <main class="app-container">
+
+    <!-- ═══════ MENU PAGE ═══════ -->
+    <section class="page active" id="page-menu">
+      <div class="hero">
+        <h1 class="hero-title">KanaQuest</h1>
+        <p class="hero-subtitle">Kuasai Hiragana & Katakana dengan cara menyenangkan!</p>
+        <div class="hero-kana">あ い う え お</div>
+      </div>
+
+      <div class="level-grid">
+        <!-- Level 1 -->
+        <div class="level-card level-1" id="card-level-1">
+          <div class="level-card-header">
+            <div class="level-badge">L1</div>
+            <div>
+              <div class="level-card-title">Huruf → Romaji</div>
+              <div class="level-card-desc">Tebak bacaan romaji dari huruf Jepang yang ditampilkan</div>
+            </div>
+          </div>
+          <div class="level-settings" id="settings-1">
+            <div class="settings-group">
+              <div class="settings-label">Jenis Huruf</div>
+              <div class="settings-chips" id="kana-type-chips">
+                <div class="chip selected" data-value="hiragana">Hiragana</div>
+                <div class="chip" data-value="katakana">Katakana</div>
+                <div class="chip" data-value="mixed">Campuran</div>
+              </div>
+            </div>
+            <div class="settings-group">
+              <div class="settings-label">Jumlah Soal</div>
+              <div class="settings-chips" id="count-chips-1">
+                <div class="chip selected" data-value="10">10</div>
+                <div class="chip" data-value="20">20</div>
+                <div class="chip" data-value="all-hiragana">Semua Hiragana</div>
+                <div class="chip" data-value="all-katakana">Semua Katakana</div>
+                <div class="chip" data-value="all">Semua</div>
+              </div>
+              <div class="custom-input-group">
+                <input type="number" class="custom-input" id="custom-count-1" placeholder="Custom" min="1" max="92" />
+                <span class="custom-input-label">soal (custom)</span>
+              </div>
+            </div>
+            <div class="toggle-row">
+              <span class="toggle-label">🧘 Mode latihan (tanpa skor)</span>
+              <button class="toggle-switch" id="practice-toggle-1" data-on="false"></button>
+            </div>
+            <button class="btn-start" id="btn-start-1">Mulai Level 1 🚀</button>
+          </div>
+        </div>
+
+        <!-- Level 2 -->
+        <div class="level-card level-2" id="card-level-2">
+          <div class="level-card-header">
+            <div class="level-badge">L2</div>
+            <div>
+              <div class="level-card-title">Kata → Romaji</div>
+              <div class="level-card-desc">Tebak bacaan romaji dari kata dalam huruf Jepang</div>
+            </div>
+          </div>
+          <div class="level-settings" id="settings-2">
+            <div class="settings-group">
+              <div class="settings-label">Jumlah Soal</div>
+              <div class="settings-chips" id="count-chips-2">
+                <div class="chip selected" data-value="10">10</div>
+                <div class="chip" data-value="20">20</div>
+                <div class="chip" data-value="30">30</div>
+              </div>
+            </div>
+            <div class="toggle-row">
+              <span class="toggle-label">🧘 Mode latihan (tanpa skor)</span>
+              <button class="toggle-switch" id="practice-toggle-2" data-on="false"></button>
+            </div>
+            <button class="btn-start" id="btn-start-2">Mulai Level 2 🚀</button>
+          </div>
+        </div>
+
+        <!-- Level 3 -->
+        <div class="level-card level-3" id="card-level-3">
+          <div class="level-card-header">
+            <div class="level-badge">L3</div>
+            <div>
+              <div class="level-card-title">Kalimat → Romaji</div>
+              <div class="level-card-desc">Tulis romaji dari kalimat sederhana bahasa Jepang</div>
+            </div>
+          </div>
+          <div class="level-settings" id="settings-3">
+            <div class="settings-group">
+              <div class="settings-label">Jumlah Soal</div>
+              <div class="settings-chips" id="count-chips-3">
+                <div class="chip selected" data-value="10">10</div>
+                <div class="chip" data-value="20">20</div>
+                <div class="chip" data-value="30">30</div>
+              </div>
+            </div>
+            <div class="toggle-row">
+              <span class="toggle-label">🧘 Mode latihan (tanpa skor)</span>
+              <button class="toggle-switch" id="practice-toggle-3" data-on="false"></button>
+            </div>
+            <button class="btn-start" id="btn-start-3">Mulai Level 3 🚀</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="menu-footer">
+        <button class="btn-secondary" id="btn-leaderboard">🏆 Leaderboard</button>
+      </div>
+    </section>
+
+    <!-- ═══════ GAME PAGE ═══════ -->
+    <section class="page" id="page-game">
+      <div class="game-topbar">
+        <span class="game-level-label" id="game-level-label">Level 1 — Huruf → Romaji</span>
+        <span class="game-score" id="game-score-display">Skor: <span id="score-value">0</span></span>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progress-bar" style="width: 2%"></div>
+      </div>
+      <div class="question-counter" id="question-counter">Soal 1 / 10</div>
+
+      <div class="question-card" id="question-card">
+        <div class="question-kana" id="question-display"></div>
+        <div class="question-clue hidden" id="question-clue"></div>
+      </div>
+
+      <!-- Multiple choice (Level 1 & 2) -->
+      <div class="options-grid" id="options-grid"></div>
+
+      <!-- Text input (Level 3) -->
+      <div class="answer-input-group hidden" id="answer-input-group">
+        <input type="text" class="answer-input" id="answer-input" placeholder="Ketik romaji di sini..." autocomplete="off" spellcheck="false" />
+        <button class="btn-submit" id="btn-submit">Jawab</button>
+      </div>
+
+      <!-- Feedback -->
+      <div class="feedback" id="feedback">
+        <span class="feedback-icon" id="feedback-icon"></span>
+        <span id="feedback-text"></span>
+      </div>
+
+      <!-- Navigation -->
+      <div class="game-nav">
+        <button class="btn-nav" id="btn-prev" disabled>← Sebelumnya</button>
+        <button class="btn-nav primary" id="btn-next">Selanjutnya →</button>
+      </div>
+    </section>
+
+    <!-- ═══════ RESULT PAGE ═══════ -->
+    <section class="page" id="page-result">
+      <div class="result-card">
+        <div class="result-emoji" id="result-emoji">🎉</div>
+        <div class="result-title" id="result-title">Luar Biasa!</div>
+        <div class="result-score" id="result-score">0</div>
+        <div class="result-stats">
+          <div class="stat-item">
+            <div class="stat-value" id="stat-correct">0</div>
+            <div class="stat-label">Benar</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-wrong">0</div>
+            <div class="stat-label">Salah</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-percent">0%</div>
+            <div class="stat-label">Akurasi</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wrong-answers-section hidden" id="wrong-answers-section">
+        <div class="section-title">❌ Soal yang Salah</div>
+        <div id="wrong-answers-list"></div>
+      </div>
+
+      <div class="result-actions">
+        <button class="btn-result accent hidden" id="btn-retry-wrong">🔄 Ulangi Soal Salah</button>
+        <button class="btn-result primary" id="btn-play-again">🎮 Main Lagi</button>
+        <button class="btn-result secondary" id="btn-result-home">🏠 Menu Utama</button>
+      </div>
+    </section>
+
+    <!-- ═══════ LEADERBOARD PAGE ═══════ -->
+    <section class="page" id="page-leaderboard">
+      <div class="leaderboard-header">
+        <h2 class="leaderboard-title">🏆 Leaderboard</h2>
+        <button class="btn-back" id="btn-lb-back">← Kembali</button>
+      </div>
+
+      <div class="tabs" id="lb-tabs">
+        <button class="tab active" data-level="1">Level 1</button>
+        <button class="tab" data-level="2">Level 2</button>
+        <button class="tab" data-level="3">Level 3</button>
+      </div>
+
+      <div id="lb-content">
+        <table class="leaderboard-table" id="lb-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Skor</th>
+              <th>Soal</th>
+              <th>Akurasi</th>
+              <th>Tanggal</th>
+            </tr>
+          </thead>
+          <tbody id="lb-tbody"></tbody>
+        </table>
+        <div class="leaderboard-empty hidden" id="lb-empty">
+          <div class="leaderboard-empty-icon">📋</div>
+          <div class="leaderboard-empty-text">Belum ada data. Mainkan game untuk mengisi leaderboard!</div>
+        </div>
+      </div>
+
+      <div style="text-align: center;">
+        <button class="btn-clear-lb" id="btn-clear-lb">🗑️ Hapus Semua Data</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
