@@ -12,6 +12,9 @@
     constructor() {
       this.enabled = localStorage.getItem('kq_sound') !== 'off';
       this.ctx = null;
+      // Preload the "fahh" wrong answer sound
+      this.wrongSound = new Audio('fahh-sound-effect.mp3.mpeg');
+      this.wrongSound.preload = 'auto';
     }
 
     _getCtx() {
@@ -24,6 +27,14 @@
     play(type) {
       if (!this.enabled) return;
       try {
+        if (type === 'wrong') {
+          // Play the "fahh" sound file for wrong answers
+          this.wrongSound.currentTime = 0;
+          this.wrongSound.volume = 0.5;
+          this.wrongSound.play().catch(() => {});
+          return;
+        }
+
         const ctx = this._getCtx();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -39,14 +50,6 @@
           gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
           osc.start(ctx.currentTime);
           osc.stop(ctx.currentTime + 0.4);
-        } else if (type === 'wrong') {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(200, ctx.currentTime);
-          osc.frequency.setValueAtTime(150, ctx.currentTime + 0.15);
-          gain.gain.setValueAtTime(0.1, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-          osc.start(ctx.currentTime);
-          osc.stop(ctx.currentTime + 0.3);
         } else if (type === 'complete') {
           const notes = [523.25, 659.25, 783.99, 1046.50];
           notes.forEach((freq, i) => {
