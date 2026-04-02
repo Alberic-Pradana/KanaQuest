@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="KanaQuest — Game edukasi interaktif untuk belajar huruf Jepang Hiragana dan Katakana dengan 3 level tantangan." />
-  <title>KanaQuest — Belajar Hiragana & Katakana</title>
+  <meta name="description" content="KanaQuest — Game edukasi interaktif untuk belajar huruf Jepang Hiragana, Katakana, dan Kanji dengan berbagai level tantangan." />
+  <title>KanaQuest — Belajar Hiragana, Katakana & Kanji</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎌</text></svg>" />
 </head>
@@ -19,6 +19,7 @@
       </a>
       <div class="header-actions">
         <button class="icon-btn" id="btn-sound" title="Sound On/Off">🔊</button>
+        <button class="icon-btn" id="btn-sound-settings" title="Pengaturan Suara">⚙️</button>
         <button class="icon-btn" id="btn-dark-mode" title="Dark Mode">🌙</button>
       </div>
     </div>
@@ -127,6 +128,54 @@
             <button class="btn-start" id="btn-start-3">Mulai Level 3 🚀</button>
           </div>
         </div>
+
+        <!-- Level 4 Kanji -->
+        <div class="level-card level-4" id="card-level-4">
+          <div class="level-card-header">
+            <div class="level-badge">漢</div>
+            <div>
+              <div class="level-card-title">Kanji → Arti</div>
+              <div class="level-card-desc">Tebak arti dari karakter kanji yang ditampilkan</div>
+            </div>
+          </div>
+          <div class="level-settings" id="settings-4">
+            <div class="settings-group">
+              <div class="settings-label">Jumlah Soal</div>
+              <div class="settings-chips" id="count-chips-4">
+                <div class="chip selected" data-value="10">10</div>
+                <div class="chip" data-value="20">20</div>
+                <div class="chip" data-value="50">50</div>
+                <div class="chip" data-value="all">Semua (200)</div>
+              </div>
+            </div>
+            <div class="toggle-row">
+              <span class="toggle-label">🧘 Mode latihan (tanpa skor)</span>
+              <button class="toggle-switch" id="practice-toggle-4" data-on="false"></button>
+            </div>
+            <button class="btn-start" id="btn-start-4">Mulai Level 4 — Kanji 🚀</button>
+          </div>
+        </div>
+
+        <!-- Endless Mode -->
+        <div class="level-card level-endless" id="card-level-endless">
+          <div class="level-card-header">
+            <div class="level-badge">∞</div>
+            <div>
+              <div class="level-card-title">Endless Mode</div>
+              <div class="level-card-desc">Bermain tanpa batas! Soal muncul terus-menerus sampai kamu berhenti</div>
+            </div>
+          </div>
+          <div class="level-settings" id="settings-endless">
+            <div class="settings-group">
+              <div class="settings-label">Jenis Huruf</div>
+              <div class="settings-chips" id="endless-type-chips">
+                <div class="chip selected" data-value="hiragana">Hiragana</div>
+                <div class="chip" data-value="katakana">Katakana</div>
+              </div>
+            </div>
+            <button class="btn-start" id="btn-start-endless">Mulai Endless Mode ♾️</button>
+          </div>
+        </div>
       </div>
 
       <div class="menu-footer">
@@ -138,12 +187,21 @@
     <section class="page" id="page-game">
       <div class="game-topbar">
         <span class="game-level-label" id="game-level-label">Level 1 — Huruf → Romaji</span>
-        <span class="game-score" id="game-score-display">Skor: <span id="score-value">0</span></span>
+        <div class="game-topbar-right">
+          <span class="game-timer" id="game-timer-display">⏱️ 00:00</span>
+          <span class="game-score" id="game-score-display">Skor: <span id="score-value">0</span></span>
+        </div>
       </div>
-      <div class="progress-bar-container">
+      <div class="progress-bar-container" id="progress-bar-container">
         <div class="progress-bar" id="progress-bar" style="width: 2%"></div>
       </div>
       <div class="question-counter" id="question-counter">Soal 1 / 10</div>
+
+      <!-- Endless mode: real-time stats bar -->
+      <div class="endless-stats-bar hidden" id="endless-stats-bar">
+        <div class="endless-stat"><span class="endless-stat-icon">✅</span> <span id="endless-correct-count">0</span></div>
+        <div class="endless-stat"><span class="endless-stat-icon">❌</span> <span id="endless-wrong-count">0</span></div>
+      </div>
 
       <div class="question-card" id="question-card">
         <div class="question-kana" id="question-display"></div>
@@ -168,6 +226,7 @@
       <!-- Navigation -->
       <div class="game-nav">
         <button class="btn-nav" id="btn-prev" disabled>← Sebelumnya</button>
+        <button class="btn-nav danger hidden" id="btn-stop-endless">🛑 Akhiri</button>
         <button class="btn-nav primary" id="btn-next">Selanjutnya →</button>
       </div>
     </section>
@@ -190,6 +249,10 @@
           <div class="stat-item">
             <div class="stat-value" id="stat-percent">0%</div>
             <div class="stat-label">Akurasi</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-duration">00:00</div>
+            <div class="stat-label">Durasi</div>
           </div>
         </div>
       </div>
@@ -217,6 +280,8 @@
         <button class="tab active" data-level="1">Level 1</button>
         <button class="tab" data-level="2">Level 2</button>
         <button class="tab" data-level="3">Level 3</button>
+        <button class="tab" data-level="4">Kanji</button>
+        <button class="tab" data-level="endless">Endless</button>
       </div>
 
       <div id="lb-content">
@@ -227,6 +292,7 @@
               <th>Skor</th>
               <th>Soal</th>
               <th>Akurasi</th>
+              <th>Durasi</th>
               <th>Tanggal</th>
             </tr>
           </thead>
@@ -245,6 +311,45 @@
 
   </main>
 
+  <!-- ═══════ SOUND SETTINGS MODAL ═══════ -->
+  <div class="modal-overlay hidden" id="sound-modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">🔊 Pengaturan Suara</h3>
+        <button class="modal-close" id="btn-close-sound-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Kustomisasi suara jawaban benar dan salah. Taruh file audio (.mp3, .wav, .ogg) di folder <code>sounds/</code> lalu pilih di bawah ini.</p>
+
+        <div class="sound-setting-group">
+          <label class="sound-setting-label">✅ Suara Jawaban Benar</label>
+          <div class="sound-setting-row">
+            <select class="sound-select" id="select-sound-correct">
+              <option value="">🎵 Default (built-in)</option>
+            </select>
+            <button class="btn-preview" id="btn-preview-correct" title="Preview">▶</button>
+          </div>
+        </div>
+
+        <div class="sound-setting-group">
+          <label class="sound-setting-label">❌ Suara Jawaban Salah</label>
+          <div class="sound-setting-row">
+            <select class="sound-select" id="select-sound-wrong">
+              <option value="">🎵 Default (built-in)</option>
+            </select>
+            <button class="btn-preview" id="btn-preview-wrong" title="Preview">▶</button>
+          </div>
+        </div>
+
+        <div class="sound-actions">
+          <button class="btn-result secondary" id="btn-reset-sounds">🔄 Reset ke Default</button>
+          <button class="btn-result primary" id="btn-save-sounds">💾 Simpan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="sounds/list.js"></script>
   <script src="data.js"></script>
   <script src="script.js"></script>
 </body>

@@ -6,15 +6,57 @@
   'use strict';
 
   // ──────────────────────────────────────────
-  // Sound Manager (Web Audio API)
+  // Sound Manager (Web Audio API + Custom Sounds)
   // ──────────────────────────────────────────
   class SoundManager {
     constructor() {
       this.enabled = localStorage.getItem('kq_sound') !== 'off';
       this.ctx = null;
-      // Preload the "fahh" wrong answer sound
-      this.wrongSound = new Audio('fahh-sound-effect.mp3.mpeg');
-      this.wrongSound.preload = 'auto';
+
+      // Custom sound settings (stored in localStorage)
+      this.customCorrect = localStorage.getItem('kq_sound_correct') || '';
+      this.customWrong = localStorage.getItem('kq_sound_wrong') || '';
+
+      // Preloaded custom audio elements
+      this.correctAudio = null;
+      this.wrongAudio = null;
+
+      this._preloadCustomSounds();
+    }
+
+    _preloadCustomSounds() {
+      if (this.customCorrect) {
+        this.correctAudio = new Audio(`sounds/${this.customCorrect}`);
+        this.correctAudio.preload = 'auto';
+      } else {
+        this.correctAudio = null;
+      }
+
+      if (this.customWrong) {
+        this.wrongAudio = new Audio(`sounds/${this.customWrong}`);
+        this.wrongAudio.preload = 'auto';
+      } else {
+        this.wrongAudio = null;
+      }
+    }
+
+    setCustomSound(type, filename) {
+      if (type === 'correct') {
+        this.customCorrect = filename;
+        localStorage.setItem('kq_sound_correct', filename);
+      } else if (type === 'wrong') {
+        this.customWrong = filename;
+        localStorage.setItem('kq_sound_wrong', filename);
+      }
+      this._preloadCustomSounds();
+    }
+
+    resetToDefault() {
+      this.customCorrect = '';
+      this.customWrong = '';
+      localStorage.removeItem('kq_sound_correct');
+      localStorage.removeItem('kq_sound_wrong');
+      this._preloadCustomSounds();
     }
 
     _getCtx() {
@@ -24,24 +66,37 @@
       return this.ctx;
     }
 
+    _playFile(audio) {
+      if (!audio) return false;
+      try {
+        audio.currentTime = 0;
+        audio.volume = 0.5;
+        audio.play().catch(() => {});
+        return true;
+      } catch { return false; }
+    }
+
     play(type) {
       if (!this.enabled) return;
       try {
-        if (type === 'wrong') {
-          // Play the "fahh" sound file for wrong answers
-          this.wrongSound.currentTime = 0;
-          this.wrongSound.volume = 0.5;
-          this.wrongSound.play().catch(() => {});
+        // Try custom sounds first
+        if (type === 'correct' && this.correctAudio) {
+          this._playFile(this.correctAudio);
+          return;
+        }
+        if (type === 'wrong' && this.wrongAudio) {
+          this._playFile(this.wrongAudio);
           return;
         }
 
+        // Fallback to built-in oscillator sounds
         const ctx = this._getCtx();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
 
         if (type === 'correct') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
           osc.type = 'sine';
           osc.frequency.setValueAtTime(523.25, ctx.currentTime);
           osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1);
@@ -50,6 +105,18 @@
           gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
           osc.start(ctx.currentTime);
           osc.stop(ctx.currentTime + 0.4);
+        } else if (type === 'wrong') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(200, ctx.currentTime);
+          osc.frequency.setValueAtTime(150, ctx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.12, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.3);
         } else if (type === 'complete') {
           const notes = [523.25, 659.25, 783.99, 1046.50];
           notes.forEach((freq, i) => {
@@ -110,6 +177,49 @@
   }
 
   // ──────────────────────────────────────────
+  // Timer Manager
+  // ──────────────────────────────────────────
+  class TimerManager {
+    constructor() {
+      this.startTime = null;
+      this.elapsed = 0; // in seconds
+      this.intervalId = null;
+      this.onTick = null;
+    }
+
+    start(onTick) {
+      this.startTime = Date.now();
+      this.elapsed = 0;
+      this.onTick = onTick;
+      this.intervalId = setInterval(() => {
+        this.elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+        if (this.onTick) this.onTick(this.elapsed);
+      }, 1000);
+    }
+
+    stop() {
+      if (this.intervalId) {
+        clearInterval(this.intervalId);
+        this.intervalId = null;
+      }
+      if (this.startTime) {
+        this.elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+      }
+      return this.elapsed;
+    }
+
+    getElapsed() {
+      return this.elapsed;
+    }
+
+    static formatTime(totalSeconds) {
+      const m = Math.floor(totalSeconds / 60);
+      const s = totalSeconds % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+  }
+
+  // ──────────────────────────────────────────
   // Game Engine
   // ──────────────────────────────────────────
   class GameEngine {
@@ -121,6 +231,10 @@
       this.answers = []; // { question, userAnswer, correctAnswer, isCorrect }
       this.practiceMode = false;
       this.kanaType = 'hiragana'; // for level 1
+      this.endlessMode = false;
+      this.endlessCorrect = 0;
+      this.endlessWrong = 0;
+      this.endlessTotal = 0;
     }
 
     // Generate questions for Level 1
@@ -186,6 +300,77 @@
       }));
     }
 
+    // Generate questions for Level 4 (Kanji)
+    generateLevel4(count) {
+      let pool = [...KANJI];
+      this._shuffle(pool);
+
+      if (count === 'all') {
+        count = pool.length;
+      } else {
+        count = Math.min(parseInt(count), pool.length);
+      }
+
+      const allMeanings = KANJI.map(k => k.meaning);
+
+      this.questions = pool.slice(0, count).map(item => {
+        const options = this._generateOptions(item.meaning, allMeanings, 4);
+        // Build reading string from on'yomi and kun'yomi
+        const readings = [item.onyomi, item.kunyomi].filter(r => r).join(' / ');
+        return {
+          display: item.kanji,
+          displayClass: 'question-kanji',
+          clue: readings || null,
+          clueClass: 'question-clue kanji-reading',
+          correctAnswer: item.meaning,
+          options,
+          type: 'choice'
+        };
+      });
+    }
+
+    // Generate a single random question for Endless Mode
+    generateEndlessQuestion(kanaType) {
+      let pool = [];
+      if (kanaType === 'hiragana') pool = [...HIRAGANA];
+      else if (kanaType === 'katakana') pool = [...KATAKANA];
+
+      const item = pool[Math.floor(Math.random() * pool.length)];
+      const allRomaji = [...new Set(pool.map(k => k.romaji))];
+      const options = this._generateOptions(item.romaji, allRomaji, 4);
+
+      return {
+        display: item.kana,
+        correctAnswer: item.romaji,
+        options,
+        type: 'choice'
+      };
+    }
+
+    // Start endless mode — generates the first question
+    startEndless(kanaType) {
+      this.endlessMode = true;
+      this.kanaType = kanaType;
+      this.endlessCorrect = 0;
+      this.endlessWrong = 0;
+      this.endlessTotal = 0;
+      this.currentIndex = 0;
+      this.score = 0;
+      this.answers = [];
+      this.questions = [];
+
+      // Generate first question
+      const q = this.generateEndlessQuestion(kanaType);
+      this.questions.push(q);
+    }
+
+    // Move to next endless question
+    nextEndless() {
+      const q = this.generateEndlessQuestion(this.kanaType);
+      this.questions.push(q);
+      this.currentIndex = this.questions.length - 1;
+    }
+
     // Generate retry questions from wrong answers
     generateRetry(wrongAnswers, level) {
       this.questions = wrongAnswers.map(wa => {
@@ -226,6 +411,12 @@
 
       if (isCorrect && !this.practiceMode) {
         this.score += 10;
+      }
+
+      if (this.endlessMode) {
+        this.endlessTotal++;
+        if (isCorrect) this.endlessCorrect++;
+        else this.endlessWrong++;
       }
 
       const result = {
@@ -269,10 +460,18 @@
     }
 
     isComplete() {
+      if (this.endlessMode) return false; // Endless never "completes"
       return this.answers.filter(Boolean).length === this.questions.length;
     }
 
     getResults() {
+      if (this.endlessMode) {
+        const total = this.endlessTotal;
+        const correct = this.endlessCorrect;
+        const wrong = this.endlessWrong;
+        const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+        return { score: this.score, correct, wrong, total, percent, answers: this.answers };
+      }
       const answered = this.answers.filter(Boolean);
       const correct = answered.filter(a => a.isCorrect).length;
       const wrong = answered.filter(a => !a.isCorrect).length;
@@ -290,6 +489,10 @@
       this.currentIndex = 0;
       this.score = 0;
       this.answers = [];
+      this.endlessMode = false;
+      this.endlessCorrect = 0;
+      this.endlessWrong = 0;
+      this.endlessTotal = 0;
     }
   }
 
@@ -299,6 +502,7 @@
   const sound = new SoundManager();
   const leaderboard = new LeaderboardManager();
   const game = new GameEngine();
+  const timer = new TimerManager();
 
   // DOM elements
   const $ = id => document.getElementById(id);
@@ -350,8 +554,113 @@
     updateSoundBtn();
   });
 
+  // ── Sound settings modal ──
+  const SOUND_FILES = [];
+  let soundFilesLoaded = false;
+
+  async function loadSoundFiles() {
+    if (soundFilesLoaded) return;
+
+    // Use predefined list if available (fixes file:// protocol CORS issues)
+    if (window.SOUND_LIST && Array.isArray(window.SOUND_LIST)) {
+      window.SOUND_LIST.forEach(name => {
+        if (!SOUND_FILES.includes(name)) SOUND_FILES.push(name);
+      });
+    } else {
+      try {
+        const res = await fetch('sounds/');
+        const html = await res.text();
+        // Match all href values pointing to audio files
+        const regex = /href="[^"]*?([^"/]+\.(mp3|wav|ogg|mpeg|m4a|webm|flac))"/gi;
+        let match;
+        while ((match = regex.exec(html)) !== null) {
+          const name = decodeURIComponent(match[1]);
+          if (!SOUND_FILES.includes(name)) SOUND_FILES.push(name);
+        }
+      } catch (e) {
+        // Fallback: can't auto-detect
+      }
+    }
+    
+    SOUND_FILES.sort();
+    soundFilesLoaded = true;
+  }
+
+  function populateSoundSelects() {
+    ['select-sound-correct', 'select-sound-wrong'].forEach(id => {
+      const sel = $(id);
+      // Keep the default option, remove others
+      while (sel.options.length > 1) sel.remove(1);
+      SOUND_FILES.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = `🔊 ${f}`;
+        sel.appendChild(opt);
+      });
+    });
+
+    // Set current values
+    $('select-sound-correct').value = sound.customCorrect;
+    $('select-sound-wrong').value = sound.customWrong;
+  }
+
+  $('btn-sound-settings').addEventListener('click', async () => {
+    await loadSoundFiles();
+    populateSoundSelects();
+    $('sound-modal-overlay').classList.remove('hidden');
+  });
+
+  $('btn-close-sound-modal').addEventListener('click', () => {
+    $('sound-modal-overlay').classList.add('hidden');
+  });
+
+  $('sound-modal-overlay').addEventListener('click', (e) => {
+    if (e.target === $('sound-modal-overlay')) {
+      $('sound-modal-overlay').classList.add('hidden');
+    }
+  });
+
+  // Preview buttons
+  $('btn-preview-correct').addEventListener('click', () => {
+    const file = $('select-sound-correct').value;
+    if (file) {
+      const a = new Audio(`sounds/${file}`);
+      a.volume = 0.5;
+      a.play().catch(() => {});
+    } else {
+      // Play default oscillator
+      sound.play('correct');
+    }
+  });
+
+  $('btn-preview-wrong').addEventListener('click', () => {
+    const file = $('select-sound-wrong').value;
+    if (file) {
+      const a = new Audio(`sounds/${file}`);
+      a.volume = 0.5;
+      a.play().catch(() => {});
+    } else {
+      sound.play('wrong');
+    }
+  });
+
+  // Save
+  $('btn-save-sounds').addEventListener('click', () => {
+    sound.setCustomSound('correct', $('select-sound-correct').value);
+    sound.setCustomSound('wrong', $('select-sound-wrong').value);
+    $('sound-modal-overlay').classList.add('hidden');
+  });
+
+  // Reset
+  $('btn-reset-sounds').addEventListener('click', () => {
+    sound.resetToDefault();
+    $('select-sound-correct').value = '';
+    $('select-sound-wrong').value = '';
+  });
+
   // ── Logo → home ──
   $('logo-home').addEventListener('click', () => {
+    timer.stop();
     showPage('menu');
   });
 
@@ -360,8 +669,15 @@
     card.addEventListener('click', (e) => {
       // Don't toggle if clicking inside settings
       if (e.target.closest('.level-settings')) return;
-      const level = card.id.replace('card-level-', '');
-      const settings = $(`settings-${level}`);
+      const id = card.id;
+      let settingsId;
+      if (id === 'card-level-endless') {
+        settingsId = 'settings-endless';
+      } else {
+        const level = id.replace('card-level-', '');
+        settingsId = `settings-${level}`;
+      }
+      const settings = $(settingsId);
 
       // Close other settings
       document.querySelectorAll('.level-settings').forEach(s => {
@@ -391,6 +707,8 @@
   setupChips('count-chips-1');
   setupChips('count-chips-2');
   setupChips('count-chips-3');
+  setupChips('count-chips-4');
+  setupChips('endless-type-chips');
 
   // ── Update count chips visibility based on kana type selection ──
   function updateCountChipsVisibility() {
@@ -460,13 +778,28 @@
     return selected ? selected.dataset.value : null;
   }
 
+  // ── Timer display helper ──
+  function updateTimerDisplay(seconds) {
+    $('game-timer-display').textContent = `⏱️ ${TimerManager.formatTime(seconds)}`;
+  }
+
   // ──────────────────────────────────────────
   // START GAME
   // ──────────────────────────────────────────
   function startGame(level) {
     game.reset();
     game.level = level;
-    game.practiceMode = $(`practice-toggle-${level}`).dataset.on === 'true';
+
+    // Hide endless-specific UI
+    $('btn-stop-endless').classList.add('hidden');
+    $('endless-stats-bar').classList.add('hidden');
+    $('progress-bar-container').classList.remove('hidden');
+    $('question-counter').classList.remove('hidden');
+    $('btn-prev').classList.remove('hidden');
+
+    game.practiceMode = false;
+    const practiceEl = $(`practice-toggle-${level}`);
+    if (practiceEl) game.practiceMode = practiceEl.dataset.on === 'true';
 
     if (level === 1) {
       const kanaType = getSelectedChip('kana-type-chips') || 'hiragana';
@@ -489,6 +822,9 @@
     } else if (level === 3) {
       let count = getSelectedChip('count-chips-3') || '10';
       game.generateLevel3(parseInt(count));
+    } else if (level === 4) {
+      let count = getSelectedChip('count-chips-4') || '10';
+      game.generateLevel4(count);
     }
 
     if (game.questions.length === 0) return;
@@ -497,7 +833,8 @@
     const levelLabels = {
       1: 'Level 1 — Huruf → Romaji',
       2: 'Level 2 — Kata → Romaji',
-      3: 'Level 3 — Kalimat → Romaji'
+      3: 'Level 3 — Kalimat → Romaji',
+      4: 'Level 4 — Kanji → Arti'
     };
     $('game-level-label').textContent = levelLabels[level];
 
@@ -508,17 +845,64 @@
       $('score-value').textContent = '0';
     }
 
+    // Start timer
+    updateTimerDisplay(0);
+    timer.start(updateTimerDisplay);
+
     showPage('game');
     renderQuestion();
+  }
+
+  // ──────────────────────────────────────────
+  // START ENDLESS MODE
+  // ──────────────────────────────────────────
+  function startEndlessGame() {
+    game.reset();
+    const kanaType = getSelectedChip('endless-type-chips') || 'hiragana';
+    game.startEndless(kanaType);
+    game.level = 'endless';
+
+    // Show endless-specific UI, hide normal UI
+    $('btn-stop-endless').classList.remove('hidden');
+    $('endless-stats-bar').classList.remove('hidden');
+    $('progress-bar-container').classList.add('hidden');
+    $('question-counter').classList.add('hidden');
+    $('btn-prev').classList.add('hidden');
+
+    // Reset stats display
+    $('endless-correct-count').textContent = '0';
+    $('endless-wrong-count').textContent = '0';
+
+    // Label
+    const typeLabel = kanaType === 'hiragana' ? 'Hiragana' : 'Katakana';
+    $('game-level-label').textContent = `Endless Mode — ${typeLabel}`;
+
+    // Score
+    $('game-score-display').classList.remove('hidden');
+    $('score-value').textContent = '0';
+
+    // Start timer
+    updateTimerDisplay(0);
+    timer.start(updateTimerDisplay);
+
+    showPage('game');
+    renderEndlessQuestion();
   }
 
   // Start buttons
   $('btn-start-1').addEventListener('click', (e) => { e.stopPropagation(); startGame(1); });
   $('btn-start-2').addEventListener('click', (e) => { e.stopPropagation(); startGame(2); });
   $('btn-start-3').addEventListener('click', (e) => { e.stopPropagation(); startGame(3); });
+  $('btn-start-4').addEventListener('click', (e) => { e.stopPropagation(); startGame(4); });
+  $('btn-start-endless').addEventListener('click', (e) => { e.stopPropagation(); startEndlessGame(); });
+
+  // Stop Endless button
+  $('btn-stop-endless').addEventListener('click', () => {
+    finishGame();
+  });
 
   // ──────────────────────────────────────────
-  // RENDER QUESTION
+  // RENDER QUESTION (Normal Mode)
   // ──────────────────────────────────────────
   function renderQuestion() {
     const q = game.getCurrentQuestion();
@@ -540,8 +924,10 @@
     const clue = $('question-clue');
     if (q.clue) {
       clue.textContent = q.clue;
+      clue.className = q.clueClass || 'question-clue';
       clue.classList.remove('hidden');
     } else {
+      clue.className = 'question-clue';
       clue.classList.add('hidden');
     }
 
@@ -596,6 +982,42 @@
     // Animate card
     $('question-card').style.animation = 'none';
     $('question-card').offsetHeight; // trigger reflow
+    $('question-card').style.animation = 'fadeSlideIn 0.3s ease';
+  }
+
+  // ──────────────────────────────────────────
+  // RENDER ENDLESS QUESTION
+  // ──────────────────────────────────────────
+  function renderEndlessQuestion() {
+    const q = game.getCurrentQuestion();
+    if (!q) return;
+
+    // Question display
+    const display = $('question-display');
+    display.textContent = q.display;
+    display.className = 'question-kana';
+
+    // Hide clue
+    $('question-clue').classList.add('hidden');
+
+    // Hide feedback
+    $('feedback').classList.remove('show', 'correct', 'wrong');
+
+    // Always show choice options for endless mode
+    $('options-grid').classList.remove('hidden');
+    $('answer-input-group').classList.add('hidden');
+    renderOptions(q);
+
+    // Next button is hidden in endless, stop button is shown
+    $('btn-next').textContent = 'Selanjutnya →';
+    $('btn-next').disabled = true;
+
+    // Score
+    $('score-value').textContent = game.score;
+
+    // Animate card
+    $('question-card').style.animation = 'none';
+    $('question-card').offsetHeight;
     $('question-card').style.animation = 'fadeSlideIn 0.3s ease';
   }
 
@@ -668,8 +1090,22 @@
       }
     }
 
-    // Update nav
-    updateNavButtons();
+    // Update endless stats
+    if (game.endlessMode) {
+      $('endless-correct-count').textContent = game.endlessCorrect;
+      $('endless-wrong-count').textContent = game.endlessWrong;
+
+      // Auto-advance in endless mode after a short delay
+      setTimeout(() => {
+        if (game.endlessMode) {
+          game.nextEndless();
+          renderEndlessQuestion();
+        }
+      }, 1000);
+    } else {
+      // Update nav
+      updateNavButtons();
+    }
   }
 
   function handleInputAnswer() {
@@ -735,6 +1171,7 @@
 
   // ── Navigation ──
   $('btn-next').addEventListener('click', () => {
+    if (game.endlessMode) return; // Endless mode doesn't use next button for navigation
     if (game.isComplete()) {
       finishGame();
       return;
@@ -754,6 +1191,7 @@
   // FINISH GAME → RESULT
   // ──────────────────────────────────────────
   function finishGame() {
+    const duration = timer.stop();
     sound.play('complete');
     const results = game.getResults();
 
@@ -773,6 +1211,7 @@
     $('stat-correct').textContent = results.correct;
     $('stat-wrong').textContent = results.wrong;
     $('stat-percent').textContent = `${results.percent}%`;
+    $('stat-duration').textContent = TimerManager.formatTime(duration);
 
     // Wrong answers list
     const wrongAnswers = game.getWrongAnswers();
@@ -808,7 +1247,8 @@
         score: results.score,
         total: results.total,
         correct: results.correct,
-        percent: results.percent
+        percent: results.percent,
+        duration: duration
       });
     }
 
@@ -837,21 +1277,38 @@
     game.generateRetry(wrongAnswers, level);
     if (game.questions.length === 0) return;
 
+    // Hide endless-specific UI
+    $('btn-stop-endless').classList.add('hidden');
+    $('endless-stats-bar').classList.add('hidden');
+    $('progress-bar-container').classList.remove('hidden');
+    $('question-counter').classList.remove('hidden');
+    $('btn-prev').classList.remove('hidden');
+
     const levelLabels = {
       1: 'Level 1 — Ulangi Soal Salah',
       2: 'Level 2 — Ulangi Soal Salah',
-      3: 'Level 3 — Ulangi Soal Salah'
+      3: 'Level 3 — Ulangi Soal Salah',
+      4: 'Kanji — Ulangi Soal Salah',
+      'endless': 'Endless — Ulangi Soal Salah'
     };
-    $('game-level-label').textContent = levelLabels[level];
+    $('game-level-label').textContent = levelLabels[level] || 'Ulangi Soal Salah';
     $('game-score-display').classList.remove('hidden');
     $('score-value').textContent = '0';
+
+    // Start timer
+    updateTimerDisplay(0);
+    timer.start(updateTimerDisplay);
 
     showPage('game');
     renderQuestion();
   });
 
   $('btn-play-again').addEventListener('click', () => {
-    startGame(game.level);
+    if (game.level === 'endless') {
+      startEndlessGame();
+    } else {
+      startGame(game.level);
+    }
   });
 
   $('btn-result-home').addEventListener('click', () => {
@@ -875,7 +1332,8 @@
     tab.addEventListener('click', () => {
       $('lb-tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      currentLBLevel = parseInt(tab.dataset.level);
+      const lvl = tab.dataset.level;
+      currentLBLevel = lvl === 'endless' ? 'endless' : parseInt(lvl);
       renderLeaderboard(currentLBLevel);
     });
   });
@@ -906,6 +1364,7 @@
 
       const date = new Date(entry.date);
       const dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+      const durationStr = entry.duration != null ? TimerManager.formatTime(entry.duration) : '-';
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -913,6 +1372,7 @@
         <td style="font-weight:700; color:var(--primary)">${entry.score}</td>
         <td>${entry.correct}/${entry.total}</td>
         <td>${entry.percent}%</td>
+        <td style="font-weight:600; color:var(--accent-purple)">${durationStr}</td>
         <td style="color:var(--text-muted);font-size:0.8rem">${dateStr}</td>
       `;
       tbody.appendChild(tr);
